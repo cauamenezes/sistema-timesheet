@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timesheet - Consultor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+      body {
+        background-color: #f4f8fb;
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1,
+      h2 {
+        color: #003366;
+      }
+      .dados-consultor,
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: left;
+      }
+      .dados-consultor th {
+        background-color: #003366;
+        color: white;
+        text-align: center;
+      }
+      table thead th {
+        background-color: #003366;
+        color: white;
+        text-align: center;
+      }
+      td input {
+        width: 95%;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      .btn {
+        background-color: #003366;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        margin-top: 10px;
+        margin-right: 10px;
+      }
+      .btn:hover {
+        background-color: #0055a5;
+      }
+      .btn-excluir {
+        background-color: #e74c3c;
+      }
+      .btn-duplicar {
+        background-color: #f39c12;
+      }
+      .btn-limpar {
+        background-color: #7f8c8d;
+      }
+      .btn-excluir,
+      .btn-duplicar,
+      .btn-limpar {
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+      .btn-excluir:hover {
+        background-color: #c0392b;
+      }
+      .btn-duplicar:hover {
+        background-color: #d68910;
+      }
+      .btn-limpar:hover {
+        background-color: #626c70;
+      }
+      tfoot td {
+        background-color: #e8f0fa;
+        font-weight: bold;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Timesheet - Consultor</h1>
+
+    <!-- Tabela de Dados do Consultor -->
+    <table class="dados-consultor" id="dados-consultor">
+      <tr>
+        <th colspan="6">Dados do Consultor</th>
+      </tr>
+      <tr>
+        <td>
+          <strong>Nome:</strong><br /><input
+            type="text"
+            placeholder="Nome do Consultor"
+            required
+          />
+        </td>
+        <td>
+          <strong>Empresa:</strong><br /><input
+            type="text"
+            placeholder="Nome da Empresa"
+          />
+        </td>
+        <td>
+          <strong>Função:</strong><br /><input
+            type="text"
+            placeholder="Função"
+          />
+        </td>
+        <td>
+          <strong>CPF:</strong><br /><input type="text" placeholder="CPF" />
+        </td>
+        <td>
+          <strong>RG:</strong><br /><input type="text" placeholder="RG" />
+        </td>
+        <td>
+          <strong>Período:</strong><br /><input
+            type="text"
+            placeholder="Mês/Ano"
+          />
+        </td>
+      </tr>
+    </table>
+
+    <h2>Registro de Atividades</h2>
+    <table id="tabela-atividades">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Projeto</th>
+          <th>Atividade</th>
+          <th>Horas Trabalhadas</th>
+          <th>Observações</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="timesheet-body">
+        <!-- Linhas adicionadas dinamicamente -->
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">Total de Horas</td>
+          <td id="total-horas">0</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <button class="btn" onclick="adicionarLinha()">Adicionar Linha</button>
+    <button class="btn btn-limpar" onclick="limparTodasLinhas()">
+      Limpar Tudo
+    </button>
+    <button class="btn" onclick="salvar()">Salvar</button>
+    <button class="btn" onclick="exportarExcel()">Exportar para Excel</button>
+
+    <script>
+      function adicionarLinha(dados = {}) {
+        const tabela = document.getElementById("timesheet-body");
+        const linha = document.createElement("tr");
+
+        linha.innerHTML = `
+                <td><input type="date" value="${
+                  dados.data || ""
+                }" onchange="calcularTotal()"></td>
+                <td><input type="text" placeholder="Projeto" value="${
+                  dados.projeto || ""
+                }"></td>
+                <td><input type="text" placeholder="Atividade" value="${
+                  dados.atividade || ""
+                }"></td>
+                <td><input type="number" min="0" step="0.5" placeholder="Horas" value="${
+                  dados.horas || ""
+                }" onchange="calcularTotal()"></td>
+                <td><input type="text" placeholder="Observações" value="${
+                  dados.obs || ""
+                }"></td>
+                <td>
+                    <button class="btn-duplicar" onclick="duplicarLinha(this)">📄</button>
+                    <button class="btn-excluir" onclick="excluirLinha(this)">🗑</button>
+                </td>
+            `;
+        tabela.appendChild(linha);
+      }
+
+      function duplicarLinha(botao) {
+        const linha = botao.closest("tr");
+        const inputs = linha.querySelectorAll("input");
+        const dados = {
+          data: inputs[0].value,
+          projeto: inputs[1].value,
+          atividade: inputs[2].value,
+          horas: inputs[3].value,
+          obs: inputs[4].value,
+        };
+        adicionarLinha(dados);
+      }
+
+      function excluirLinha(botao) {
+        if (confirm("Deseja excluir esta linha?")) {
+          const linha = botao.closest("tr");
+          linha.remove();
+          calcularTotal();
+        }
+      }
+
+      function limparTodasLinhas() {
+        if (confirm("Deseja limpar todas as atividades?")) {
+          document.getElementById("timesheet-body").innerHTML = "";
+          calcularTotal();
+        }
+      }
+
+      function calcularTotal() {
+        let total = 0;
+        const linhas = document.querySelectorAll("#timesheet-body tr");
+        linhas.forEach((linha) => {
+          const horasInput = linha.querySelector("td:nth-child(4) input");
+          const horas = parseFloat(horasInput.value);
+          if (!isNaN(horas)) {
+            total += horas;
+          }
+        });
+        document.getElementById("total-horas").innerText = total;
+      }
+
+      function validarDados() {
+        const linhas = document.querySelectorAll("#timesheet-body tr");
+        if (linhas.length === 0) {
+          alert("Adicione pelo menos uma linha de atividade!");
+          return false;
+        }
+        for (let linha of linhas) {
+          const data = linha.querySelector("td:nth-child(1) input").value;
+          const horas = linha.querySelector("td:nth-child(4) input").value;
+          if (!data) {
+            alert("Preencha a data em todas as atividades.");
+            return false;
+          }
+          if (!horas || parseFloat(horas) <= 0) {
+            alert("Preencha as horas corretamente em todas as atividades.");
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function salvar() {
+        if (validarDados()) {
+          if (confirm("Deseja realmente salvar os dados? (simulado)")) {
+            alert("Dados salvos com sucesso!");
+          }
+        }
+      }
+
+      function exportarExcel() {
+        if (!validarDados()) return;
+
+        const wb = XLSX.utils.book_new();
+
+        // Dados do Consultor
+        const dadosConsultor = [];
+        const linhasConsultor = document.querySelectorAll(
+          "#dados-consultor tr"
+        );
+
+        linhasConsultor.forEach((linha) => {
+          const linhaDados = [];
+          linha.querySelectorAll("th, td").forEach((celula) => {
+            const input = celula.querySelector("input");
+            linhaDados.push(input ? input.value : celula.innerText);
+          });
+          dadosConsultor.push(linhaDados);
+        });
+
+        const wsConsultor = XLSX.utils.aoa_to_sheet(dadosConsultor);
+        XLSX.utils.book_append_sheet(wb, wsConsultor, "Dados Consultor");
+
+        // Dados das Atividades
+        const dadosAtividades = [];
+        const cabecalho = [];
+        document
+          .querySelectorAll("#tabela-atividades thead th")
+          .forEach((th) => {
+            if (th.innerText !== "Ações") cabecalho.push(th.innerText);
+          });
+        dadosAtividades.push(cabecalho);
+
+        const linhas = document.querySelectorAll("#tabela-atividades tbody tr");
+        linhas.forEach((linha) => {
+          const linhaDados = [];
+          linha.querySelectorAll("td").forEach((td, index) => {
+            if (index < 5) {
+              // exclui coluna "Ações"
+              const input = td.querySelector("input");
+              linhaDados.push(input ? input.value : "");
+            }
+          });
+          dadosAtividades.push(linhaDados);
+        });
+
+        // Adicionar Total no rodapé
+        dadosAtividades.push([
+          "",
+          "",
+          "Total de Horas",
+          document.getElementById("total-horas").innerText,
+          "",
+        ]);
+
+        const wsAtividades = XLSX.utils.aoa_to_sheet(dadosAtividades);
+        XLSX.utils.book_append_sheet(wb, wsAtividades, "Atividades");
+
+        XLSX.writeFile(wb, "Timesheet.xlsx");
+      }
+
+      // Adiciona 5 linhas por padrão
+      for (let i = 0; i < 5; i++) {
+        adicionarLinha();
+      }
+    </script>
+  </body>
+</html>
